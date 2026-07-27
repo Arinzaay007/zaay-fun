@@ -146,6 +146,13 @@ let _adapter: PromptedAdapter | null = null;
 
 /** Singleton accessor. Swap the implementation here to use a real API later. */
 export function getPrmptedAdapter(): PromptedAdapter {
-  if (!_adapter) _adapter = new OgScraperAdapter();
+  if (!_adapter) {
+    // Lazy require avoids a circular import (SupabaseRestAdapter wraps
+    // OgScraperAdapter as its fallback).
+    const {
+      SupabaseRestAdapter,
+    } = require("./supabase-rest") as typeof import("./supabase-rest");
+    _adapter = new SupabaseRestAdapter();
+  }
   return _adapter;
 }
