@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { parseEther, formatEther } from "viem";
+import { useEffect, useRef, useState } from "react";
+import { parseEther, formatEther, parseEventLogs } from "viem";
 import {
   useAccount,
   useReadContract,
@@ -17,6 +17,7 @@ import { tokenAbi } from "@/lib/contracts/abis";
 import { applySlippage } from "@/lib/bondingCurve";
 import { formatMon, shortAddress } from "@/lib/utils";
 import { explorerTx } from "@/lib/chains";
+import { recordTrade } from "@/lib/api";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 
 const QUICK_MON = ["0.1", "0.5", "1", "5"];
@@ -63,12 +64,71 @@ export function BuySellPanel({
 
   const { writeContractAsync, isPending } = useWriteContract();
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>();
-  const { isLoading: isConfirming } = useWaitForTransactionReceipt({
-    hash: txHash,
-    query: { enabled: Boolean(txHash) },
-  });
+  const { data: receipt, isLoading: isConfirming } =
+    useWaitForTransactionReceipt({
+      hash: txHash,
+      query: { enabled: Boolean(txHash) },
+    });
 
   const busy = isPending || isConfirming;
+
+  // When a trade confirms, decode the on-chain Trade event from the receipt and
+  // persist it (+ the trader's new balance) so trades/holders show up. The
+  // chain is the source of truth here — no fragile client-side estimate.
+  const recordedTx = useRef<string | null>(null);
+  useEffect(() => {
+    if (!receipt || receipt.status !== "success" || !address) return;
+    if (recordedTx.current === receipt.transactionHash) return;
+    recordedTx.current = receipt.transactionHash;
+
+    (async () => {
+      try {
+        const events = parseEventLogs({
+          abi: tokenAbi,
+          eventName: "Trade",
+          logs: receipt.logs,
+        });
+        const ev =
+          events.find(
+            (e) =>
+              (e.args as { trader: string }).trader.toLowerCase() ===
+              address.toLowerCase()
+          ) ?? events[0];
+        if (!ev) return;
+
+        const a = ev.args as unknown as {
+          isBuy: boolean;
+          monAmount: bigint;
+          tokenAmount: bigint;
+          newPrice: bigint;
+          creatorFee: bigint;
+          platformFee: bigint;
+        };
+
+        // trader's balance after the trade → holders table
+        const bal = await refetchTokenBal();
+        const newBalance =
+          bal.data != null ? formatEther(bal.data as bigint) : undefined;
+
+        await recordTrade({
+          token_address: tokenAddress,
+          trader: address,
+          side: a.isBuy ? "buy" : "sell",
+          mon_amount: formatEther(a.monAmount),
+          token_amount: formatEther(a.tokenAmount),
+          price: formatEther(a.newPrice),
+          creator_fee: formatEther(a.creatorFee),
+          platform_fee: formatEther(a.platformFee),
+          tx_hash: receipt.transactionHash,
+          new_balance: newBalance,
+        });
+      } catch {
+        // best-effort — a failed record shouldn't break the UI
+      } finally {
+        onTraded?.();
+      }
+    })();
+  }, [receipt, address, tokenAddress, refetchTokenBal, onTraded]);
 
   async function handleTrade() {
     if (!parsedAmount || parsedAmount === 0n) {
@@ -112,11 +172,8 @@ export function BuySellPanel({
         </span>
       );
       setAmount("");
-      // give the chain a moment, then refresh views
-      setTimeout(() => {
-        refetchTokenBal();
-        onTraded?.();
-      }, 2500);
+      // trade recording + view refresh happen once the receipt confirms
+      // (see the useEffect above).
     } catch (e: unknown) {
       const msg =
         e instanceof Error ? e.message.split("\n")[0] : "Transaction failed";
