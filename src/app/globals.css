@@ -1,0 +1,102 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Pure dark theme — matches prmpted.com */
+    --background: 240 6% 4%; /* ~#0A0A0B near-black */
+    --foreground: 0 0% 98%;
+
+    --card: 240 6% 7%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 240 6% 6%;
+    --popover-foreground: 0 0% 98%;
+
+    /* Soft yellow/gold accent */
+    --primary: 48 96% 62%;
+    --primary-foreground: 240 10% 6%;
+
+    /* Soft purple/pink secondary */
+    --secondary: 270 60% 62%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 240 5% 12%;
+    --muted-foreground: 240 5% 62%;
+
+    --accent: 330 70% 66%;
+    --accent-foreground: 240 10% 6%;
+
+    --destructive: 0 72% 58%;
+    --destructive-foreground: 0 0% 98%;
+
+    --success: 142 70% 48%;
+    --success-foreground: 0 0% 98%;
+
+    --border: 240 5% 15%;
+    --input: 240 5% 15%;
+    --ring: 48 96% 62%;
+
+    --radius: 0.9rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    background-image:
+      radial-gradient(60rem 60rem at 80% -10%, hsl(270 70% 20% / 0.25), transparent 60%),
+      radial-gradient(50rem 50rem at 0% 0%, hsl(48 90% 20% / 0.15), transparent 55%);
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    background: hsl(48 96% 62% / 0.3);
+  }
+}
+
+@layer utilities {
+  .text-gradient-gold {
+    @apply bg-gradient-to-r from-gold via-gold-soft to-blush bg-clip-text text-transparent;
+  }
+
+  .card-glass {
+    @apply border border-border/70 bg-card/70 backdrop-blur-xl;
+  }
+
+  /* skeleton shimmer */
+  .shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+  .shimmer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      hsl(0 0% 100% / 0.05),
+      transparent
+    );
+    animation: shimmer 1.6s infinite;
+  }
+
+  /* thin scrollbar */
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(240 5% 20%);
+    border-radius: 9999px;
+  }
+}

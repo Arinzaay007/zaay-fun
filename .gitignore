@@ -1,0 +1,31 @@
+# deps
+node_modules/
+.pnp
+.pnp.js
+
+# next
+.next/
+out/
+build/
+next-env.d.ts
+*.tsbuildinfo
+
+# env
+.env
+.env.local
+.env*.local
+
+# contracts (hardhat)
+contracts/node_modules/
+contracts/artifacts/
+contracts/cache/
+contracts/typechain-types/
+contracts/.env
+
+# misc
+.DS_Store
+*.log
+npm-debug.log*
+.vscode/
+.idea/
+coverage/
