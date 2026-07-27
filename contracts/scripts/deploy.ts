@@ -57,6 +57,14 @@ export const CONTRACT_ADDRESSES = {
   escrow: "${escrowAddr}",
   platformWallet: "${platformWallet}",
 } as const;
+
+export function contractsConfigured(): boolean {
+  const zero = "0x0000000000000000000000000000000000000000";
+  return (
+    (CONTRACT_ADDRESSES.factory as string) !== zero &&
+    (CONTRACT_ADDRESSES.escrow as string) !== zero
+  );
+}
 `;
 
   const target = path.resolve(

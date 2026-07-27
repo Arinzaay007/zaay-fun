@@ -4,7 +4,7 @@ import { isAddress, createWalletClient, createPublicClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { monadTestnet } from "@/lib/chains";
 import { escrowAbi } from "@/lib/contracts/abis";
-import { CONTRACT_ADDRESSES } from "@/lib/contracts/addresses";
+import { CONTRACT_ADDRESSES, contractsConfigured } from "@/lib/contracts/addresses";
 import { usernameHash } from "@/lib/bondingCurve";
 
 export const runtime = "nodejs";
@@ -101,9 +101,8 @@ export async function POST(req: NextRequest) {
     let releaseTx: string | null = null;
     const signerKey = process.env.ESCROW_CLAIMER_PRIVATE_KEY;
     const escrowAddr = CONTRACT_ADDRESSES.escrow;
-    const zero = "0x0000000000000000000000000000000000000000";
 
-    if (signerKey && escrowAddr !== zero) {
+    if (signerKey && contractsConfigured()) {
       try {
         const account = privateKeyToAccount(
           signerKey.startsWith("0x")

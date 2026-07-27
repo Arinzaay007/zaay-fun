@@ -6,3 +6,11 @@ export const CONTRACT_ADDRESSES = {
   escrow: "0x18587f2564dddcc6D6eF10A5012Dd6B1cacC62fB",
   platformWallet: "0x711Be33B799014261De330fcF442384BF7c98E78",
 } as const;
+
+export function contractsConfigured(): boolean {
+  const zero = "0x0000000000000000000000000000000000000000";
+  return (
+    (CONTRACT_ADDRESSES.factory as string) !== zero &&
+    (CONTRACT_ADDRESSES.escrow as string) !== zero
+  );
+}
