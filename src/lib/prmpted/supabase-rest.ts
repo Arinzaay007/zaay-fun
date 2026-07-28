@@ -25,10 +25,29 @@ const PRMPTED_SUPABASE_ANON_KEY =
 const UUID_RE =
   /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 
-/** Pull the post UUID out of a prmpted.com URL (e.g. /post/<uuid>). */
-function postIdFromUrl(url: string): string | null {
-  const m = url.match(UUID_RE);
-  return m ? m[0] : null;
+/**
+ * Extract a post identifier from a prmpted.com URL.
+ * Handles:
+ *   /post/<uuid>           → { type: "id",   value: "<uuid>" }
+ *   /<username>/post/<slug> → { type: "slug", value: "<slug>" }
+ */
+function postRefFromUrl(
+  url: string
+): { type: "id" | "slug"; value: string } | null {
+  const uuidMatch = url.match(UUID_RE);
+  if (uuidMatch) return { type: "id", value: uuidMatch[0] };
+
+  try {
+    const parts = new URL(url).pathname.split("/").filter(Boolean);
+    // /<username>/post/<slug>  or  /post/<slug>
+    const postIdx = parts.indexOf("post");
+    if (postIdx !== -1 && parts[postIdx + 1]) {
+      return { type: "slug", value: parts[postIdx + 1] };
+    }
+  } catch {
+    // ignore
+  }
+  return null;
 }
 
 type PrmptedProfile = {
@@ -64,17 +83,22 @@ export class SupabaseRestAdapter implements PromptedAdapter {
 
   async getPost(rawUrl: string): Promise<PrmptedPost> {
     const url = normalizePrmptedUrl(rawUrl);
-    const id = postIdFromUrl(url);
+    const ref = postRefFromUrl(url);
 
-    // No post id in the URL (e.g. a profile or the homepage) — let the OG
+    // No post ref in the URL (e.g. a profile or the homepage) — let the OG
     // scraper do its best.
-    if (!id) return this.fallback.getPost(url);
+    if (!ref) return this.fallback.getPost(url);
 
     try {
+      const filter =
+        ref.type === "id"
+          ? `id=eq.${ref.value}`
+          : `slug=eq.${encodeURIComponent(ref.value)}`;
       const endpoint =
         `${PRMPTED_SUPABASE_URL}/rest/v1/posts` +
-        `?id=eq.${id}` +
-        `&select=id,title,prompt,images,videos,profiles:user_id(username,display_name,avatar_url,avatar_emoji)`;
+        `?${filter}` +
+        `&select=id,title,prompt,images,videos,profiles:user_id(username,display_name,avatar_url,avatar_emoji)` +
+        `&limit=1`;
 
       const res = await fetch(endpoint, {
         headers: {
